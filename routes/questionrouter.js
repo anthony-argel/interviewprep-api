@@ -29,6 +29,41 @@ router.get('/limit/:start', (req, res) => {
     })
 })
 
+router.get('/:start/search', (req, res) => {
+    let startInd = parseInt(req.params.start);
+    if(typeof startInd !== 'number') {
+        res.sendStatus(404);
+    }
+    if(startInd <= 0) {
+        res.sendStatus(404);
+    }
+    async.parallel({
+        results: function(cb) {
+            Question
+            .find(
+                {$text: 
+                    {$search: req.query.query, $caseSensitive:false}
+                },
+                {hidden:0})
+            .limit(10)
+            .populate('poster', {username:1})
+            .skip(10 * (startInd - 1))
+            .exec(cb);
+        },
+        total: function(cb) {
+            Question
+            .countDocuments(
+                {$text: 
+                    {$search: req.query.query, $caseSensitive:false}
+                })
+            .exec(cb);
+        }
+    }, (err, results) => {
+        if(err) return res.sendStatus(400);
+        res.status(200).json({results: results.results, total:results.total})
+    })
+})
+
 // CRUD
 // Create
 router.post('/', passport.authenticate('jwt', {session:false}), [

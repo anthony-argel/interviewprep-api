@@ -34,12 +34,12 @@ router.get('/verify', passport.authenticate('jwt', {session:false}), (req, res, 
 // CRUD
 // create
 router.post('/', [
-    body('username').trim().isString().isLength({min: 3, max:30}).exists(),
-    body('email').trim().isEmail().isLength({min: 3, max:50}).exists(),
-    body('password').trim().isString().isLength({min:3, max:2000}).exists(),
+    body('username').trim().isString().withMessage('Must be string').isLength({min: 3, max:30}).withMessage('Username must be within 3-30 chars long').exists(),
+    body('email').trim().isEmail().withMessage('Must be a valid email').isLength({min: 3, max:50}).withMessage('Email must be within 3-50 chars long').exists(),
+    body('password').trim().isString().withMessage('Must be a string').isLength({min:3, max:2000}).withMessage('Password must be more than 3 chars long').exists(),
     (req, res, next) => {
         const errors = validationResult(req);
-        if(!errors.isEmpty()) {return res.status(400).json({errors:['Something went wrong with your request.']})}
+        if(!errors.isEmpty()) {return res.status(400).json({errors:errors.array().map(val => val.msg)})}
         else {
             User.find({username: req.body.username}).exec((err, result) => {
                 if(err){ return res.status(400).json({errors:['Something went wrong.']});}
@@ -48,7 +48,10 @@ router.post('/', [
                 }
                 else {
                     User.find({email:req.body.email}).exec((err, result) => {
-                        if(err) {return res.json(400).json({errors:['an error occurred while checking email']})}
+                        if(err) {return res.status(400).json({errors:['an error occurred while checking email']})}
+                        if(result.length > 0) {
+                            return res.status(400).json({errors:['Email is already taken']});
+                        }
                         else if(result.length === 0) {
                             bcrypt.hash(req.body.password, 10, (err, hashedPassword) => {
                                 const newUser = new User({

@@ -4,7 +4,9 @@ const {DateTime} = require('luxon');
 const {body, validationResult} = require('express-validator');
 const passport = require('passport');
 
+const QuestionRating = require('../models/questionrating');
 const Question = require('../models/question');
+const Video = require('../models/video');
 const jwt = require('jsonwebtoken');
 const async = require('async');
 
@@ -25,7 +27,7 @@ router.get('/limit/:start', (req, res) => {
         }
     }, (err, results) => {
         if(err) {return res.sendStatus(400);}
-        res.status(200).json({total: results.totalquestions, questions:results.questions});
+        res.status(200).json({total: results.totalquestions, results:results.questions});
     })
 })
 
@@ -83,19 +85,50 @@ router.post('/', passport.authenticate('jwt', {session:false}), [
 
         newQuestion.save((err) => {
             if(err) {return res.sendStatus(400)}
-            res.sendStatus(200);
+            Question.find({text:req.body.question}, {_id:1}).exec((err2, result) => {
+                    if(err2) { res.sendStatus(404)}
+                    res.status(200).json({id:result});
+            })
         })
     }
 ]);
 
 // read
 router.get('/:id', (req, res) => {
-    Question.findById(req.params.id).exec((err, result) => {
-        if(err) {return res.sendStatus(404)}
-        res.send(result);
+    console.log(req.query);
+    async.parallel({
+        videos: function(cb) {
+            Video.find({question:req.params.id}, {youtubeurl:1, poster:1, commentcount:1, rating:1}).populate('poster', {username:1}).exec(cb);
+        },
+        question: function(cb) {
+            Question.findById(req.params.id, {hidden:0}).exec(cb);
+        },
+        userrating: function(cb) {
+            QuestionRating.findOne({question:req.params.id, rater:req.body.userid}).exec(cb);
+        }
+    }, (err, results) => {
+        if(err) return res.sendStatus(400);
+        res.status(200).json({videos: results.videos, question:results.question, userrating:results.userrating});
     })
 })
 
+// read
+router.get('/:id/userid', (req, res) => {
+    async.parallel({
+        videos: function(cb) {
+            Video.find({question:req.params.id}, {youtubeurl:1, poster:1, commentcount:1, rating:1}).populate('poster', {username:1}).exec(cb);
+        },
+        question: function(cb) {
+            Question.findById(req.params.id, {hidden:0}).exec(cb);
+        },
+        userrating: function(cb) {
+            QuestionRating.findOne({question:req.params.id, rater:req.query.query}).exec(cb);
+        }
+    }, (err, results) => {
+        if(err) return res.sendStatus(400);
+        res.status(200).json({videos: results.videos, question:results.question, userrating:results.userrating});
+    })
+})
 // update
 router.put('/:id', passport.authenticate('jwt', {session:false}), [
     body('question').trim().exists().isString().isLength({min:3, max:500}),
@@ -117,7 +150,7 @@ router.delete('/:id', passport.authenticate('jwt', {session:false}), (req, res) 
     Question.findOneAndUpdate({_id: req.params.id, poster:decoded.user._id}, {hidden:true})
     .exec(err => {
         if(err) {return res.sendStatus(404)}
-        res.sendStatus(200);
+        return res.sendStatus(200);
     })
 })
 

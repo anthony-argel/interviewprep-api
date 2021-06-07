@@ -6,6 +6,7 @@ const passport = require('passport');
 const { body, validationResult } = require('express-validator');
 
 const Video = require('../models/video');
+const Question = require('../models/question');
 
 // CRUD
 // CREATE
@@ -26,9 +27,11 @@ router.post('/:questionid', passport.authenticate('jwt', {session:false}), [
             date: DateTime.now()
         });
 
-
         newVideo.save(err => {
             if(err) return res.sendStatus(400);
+            Question.findByIdAndUpdate(req.params.questionid, {$inc: {videocount:1}}).exec(err => {
+                if(err) return res.sendStatus(400);
+            });
             res.sendStatus(200);
         });
     }
@@ -36,7 +39,7 @@ router.post('/:questionid', passport.authenticate('jwt', {session:false}), [
 
 // READ
 router.get('/:videoid', (req, res) => {
-    Video.findOne({_id: req.params.videoid, hidden:false}, {hidden:0}).exec((err, result) => {
+    Video.findOne({_id: req.params.videoid, hidden:false}, {hidden:0}).populate('poster', {username:1}).exec((err, result) => {
         if(err) return res.sendStatus(400);
         res.status(200).json({video: result});
     })
@@ -51,6 +54,9 @@ router.delete('/:videoid', passport.authenticate('jwt', {session:false}), (req, 
 
     Video.findOneAndUpdate({_id: req.params.videoid, poster:decoded.user._id}, {hidden:true}).exec(err => {
         if(err) return res.sendStatus(400);
+        Question.findByIdAndUpdate(req.body.questionid, {$inc: {videocount:-1}}).exec(err => {
+            if(err) return res.sendStatus(400);
+        });
         res.sendStatus(200);
     })
 })

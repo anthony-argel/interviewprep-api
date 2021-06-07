@@ -1,6 +1,7 @@
 const router = require('express').Router();
 
 const QuestionRating = require('../models/questionrating');
+const Question = require('../models/question');
 const passport = require('passport');
 
 const {body, validationResult} = require('express-validator');
@@ -38,12 +39,20 @@ router.post('/', passport.authenticate('jwt', {session:false}), [
 
                 newRating.save(err => {
                     if(err) {return res.sendStatus(400)}
+
+                    Question.findByIdAndUpdate(req.body.questionid, {$inc: {rating:req.body.rating}}).exec(err => {
+                        if(err) return res.sendStatus(400);
+                    });
                     res.sendStatus(200);
                 })
             }
             else if (results.length > 0) {
                 QuestionRating.findOneAndUpdate({question:req.body.questionid, rater: decoded.user._id}, {rating:req.body.rating}).exec((err, result) => {
                     if(err) return res.sendStatus(400);
+
+                    Question.findByIdAndUpdate(req.body.questionid, {$inc: {rating:req.body.rating}}).exec(err => {
+                        if(err) return res.sendStatus(400);
+                    });
                     res.sendStatus(200);
                 })
             }
@@ -63,7 +72,10 @@ router.get('/:questionid', (req, res) => {
     }, 
     (err, results) => {
         if(err) return res.sendStatus(400);
-        res.status(200).json({rating: results.totalpos - results.totalneg});
+        Question.findByIdAndUpdate(req.params.questionid, {rating: results.totalpos - results.totalneg}).exec(err => {
+            if(err) return res.sendStatus(400);
+            res.status(200).json({rating: results.totalpos - results.totalneg});
+        })
     })
 });
 
@@ -72,10 +84,14 @@ router.delete('/:ratingid', passport.authenticate('jwt', {session:false}), (req,
     const userToken = req.headers.authorization;
     const token = userToken.split(' ');
     const decoded = jwt.verify(token[1], process.env.SECRET);
-
+    console.log(req.body.rating);
+    console.log(req.body.questionid);
     QuestionRating.findOneAndDelete({_id: req.params.ratingid, rater: decoded.user._id}).exec(err => {
         if(err) return res.sendStatus(400);
-        res.sendStatus(200);
+        Question.findByIdAndUpdate(req.body.questionid, {$inc: {rating:-1 * req.body.rating}}).exec(err1 => {
+            if(err1) return res.sendStatus(400);
+            res.sendStatus(200);
+        });
     });
 });
 

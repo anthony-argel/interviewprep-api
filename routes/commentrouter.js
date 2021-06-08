@@ -74,7 +74,10 @@ router.delete('/:commentid', passport.authenticate('jwt', {session:false}), (req
 
     Comment.findOneAndUpdate({_id:req.params.commentid, poster:decoded.user._id}, {hidden:true}).exec(err => {
         if(err) return res.sendStatus(400);
-        return res.sendStatus(200);
+        Video.findByIdAndUpdate(req.body.videoid, {$inc :{commentcount: -1}}).exec(err => {
+            if(err) return res.sendStatus(400);
+            res.sendStatus(200);
+        })
     })
     
 })

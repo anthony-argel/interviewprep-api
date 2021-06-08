@@ -4,9 +4,12 @@ const passport = require('passport');
 const jwt = require('jsonwebtoken');
 const {DateTime} = require('luxon');
 
+const async = require('async');
+
 const {body, validationResult} = require('express-validator');
 
 const VideoRating = require('../models/videorating');
+const Video = require('../models/video');
 
 // CRUD
 // CREATE and UPDATE
@@ -56,14 +59,25 @@ router.get('/:videoid', (req, res) => {
             VideoRating.countDocuments({video:req.params.videoid, rating:1}).exec(cb)
         },
         totalneg: function(cb) {
-            VideoRating.countDocuments({videoid:req.params.videoid, rating:-1}).exec(cb)
+            VideoRating.countDocuments({video:req.params.videoid, rating:-1}).exec(cb)
         }
     }, 
     (err, results) => {
         if(err) return res.sendStatus(400);
-        res.status(200).json({rating: results.totalpos - results.totalneg});
+        Video.findByIdAndUpdate(req.params.videoid, {rating: results.totalpos - results.totalneg}).exec(err => {
+            if(err) return res.sendStatus(400);
+            res.status(200).json({rating: results.totalpos - results.totalneg});
+        });
     })
-})
+});
+
+// returns a specific users id to a rating
+router.get('/user/:videoid/:userid', (req, res) => {
+    VideoRating.findOne({video:req.params.videoid, rater:req.params.userid}, {rating:1}).exec((err, result) => {
+        if(err) return res.sendStatus(400);
+        res.status(200).json({result})
+    })
+});
 
 // DELETE
 router.delete('/:ratingid', passport.authenticate('jwt', {session:false}), (req, res) => {
@@ -73,7 +87,10 @@ router.delete('/:ratingid', passport.authenticate('jwt', {session:false}), (req,
 
     VideoRating.findOneAndDelete({_id: req.params.ratingid, rater: decoded.user._id}).exec(err => {
         if(err) return res.sendStatus(400);
-        res.sendStatus(200);
+        Video.findByIdAndUpdate(req.body.videoid, {$inc: {rating:-1 * req.body.rating}}).exec(err1 => {
+            if(err1) return res.sendStatus(400);
+            res.sendStatus(200);
+        });
     });
 });
 

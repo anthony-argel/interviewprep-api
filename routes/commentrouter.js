@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 const {body, validationResult} = require('express-validator');
 
 const Comment = require('../models/comment');
+const Video = require('../models/video');
 const { DateTime } = require('luxon');
 
 // CRUD
@@ -13,7 +14,6 @@ const { DateTime } = require('luxon');
 router.post('/', passport.authenticate('jwt', {session:false}), [
     body('video').trim().exists().isString(), 
     body('text').trim().exists().isString(),
-    body('replyingTo').trim().isString(),
     (req, res) => {
         const errors = validationResult(req);
         if(!errors.isEmpty()) return res.status(400).json({errors:errors.array()})
@@ -28,9 +28,6 @@ router.post('/', passport.authenticate('jwt', {session:false}), [
             date: DateTime.now(),
             poster: decoded.user._id
         }
-        if(typeof req.body.replyingTo !== 'undefined' && req.body.replyingTo !== '') {
-            newCommentData.replyingTo = req.body.replyingTo;
-        }
         
         const newComment = new Comment(newCommentData);
         newComment.save(err => {
@@ -42,9 +39,12 @@ router.post('/', passport.authenticate('jwt', {session:false}), [
 
 // READ
 router.get('/:videoid', (req, res) => {
-    Comment.find({video:req.params.videoid, hidden:false}, {hidden:0, video:0}).exec((err, results) => {
+    Comment.find({video:req.params.videoid, hidden:false}, {hidden:0, video:0}).populate('poster', {username:1}).exec((err, results) => {
         if(err) return res.sendStatus(404);
-        res.status(200).json({comments:results})
+        Video.findByIdAndUpdate(req.params.videoid, {commentcount:results.length}).exec(err => {
+            if(err) return res.sendStatus(400);
+            res.status(200).json({comments:results})
+        })
     })
 });
 

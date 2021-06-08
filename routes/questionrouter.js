@@ -95,7 +95,6 @@ router.post('/', passport.authenticate('jwt', {session:false}), [
 
 // read
 router.get('/:id', (req, res) => {
-    console.log(req.query);
     async.parallel({
         videos: function(cb) {
             Video.find({question:req.params.id}, {youtubeurl:1, poster:1, commentcount:1, rating:1}).populate('poster', {username:1}).exec(cb);
@@ -112,7 +111,7 @@ router.get('/:id', (req, res) => {
     })
 })
 
-// read
+// read with user id query
 router.get('/:id/userid', (req, res) => {
     async.parallel({
         videos: function(cb) {

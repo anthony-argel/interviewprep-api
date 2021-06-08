@@ -6,7 +6,6 @@ const CommentSchema = new Schema({
     text: {type:String, maxLength:1000, required:true},
     poster: {type: Schema.Types.ObjectId, ref:'User', required:true},
     hidden: {type:Boolean, required:true, default:false},
-    replyingTo: {type:Schema.Types.ObjectId, ref:'Comment'},
     date: {type:Date, required:true}
 });
 

@@ -84,8 +84,6 @@ router.delete('/:ratingid', passport.authenticate('jwt', {session:false}), (req,
     const userToken = req.headers.authorization;
     const token = userToken.split(' ');
     const decoded = jwt.verify(token[1], process.env.SECRET);
-    console.log(req.body.rating);
-    console.log(req.body.questionid);
     QuestionRating.findOneAndDelete({_id: req.params.ratingid, rater: decoded.user._id}).exec(err => {
         if(err) return res.sendStatus(400);
         Question.findByIdAndUpdate(req.body.questionid, {$inc: {rating:-1 * req.body.rating}}).exec(err1 => {

@@ -39,7 +39,7 @@ router.post('/:questionid', passport.authenticate('jwt', {session:false}), [
 
 // READ
 router.get('/:videoid', (req, res) => {
-    Video.findOne({_id: req.params.videoid, hidden:false}, {hidden:0}).populate('poster', {username:1}).exec((err, result) => {
+    Video.findOne({_id: req.params.videoid, hidden:false}, {hidden:0}).populate('poster', {username:1}).populate('question', {text:1}).exec((err, result) => {
         if(err) return res.sendStatus(400);
         res.status(200).json({video: result});
     })

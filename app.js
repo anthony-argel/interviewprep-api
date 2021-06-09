@@ -9,6 +9,8 @@ const mongoose = require('mongoose');
 const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
 const cors = require('cors');
+const compression = require('compression');
+const helmet = require('helmet');
 
 require('dotenv').config();
 require('./passport');
@@ -30,6 +32,8 @@ const db = mongoose.connection;
 db.on('error', console.error.bind(console, ('connection error: ')));
 
 mongoose.set('useFindAndModify', false);
+app.use(helmet());
+app.use(compression());
 app.use(cors());
 app.use(logger('dev'));
 app.use(express.json());

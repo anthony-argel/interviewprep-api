@@ -97,7 +97,7 @@ router.post('/', passport.authenticate('jwt', {session:false}), [
 router.get('/:id', (req, res) => {
     async.parallel({
         videos: function(cb) {
-            Video.find({question:req.params.id}, {youtubeurl:1, poster:1, commentcount:1, rating:1}).populate('poster', {username:1}).exec(cb);
+            Video.find({question:req.params.id, hidden:false}, {youtubeurl:1, poster:1, commentcount:1, rating:1}).populate('poster', {username:1}).exec(cb);
         },
         question: function(cb) {
             Question.findById(req.params.id, {hidden:0}).exec(cb);
@@ -115,7 +115,7 @@ router.get('/:id', (req, res) => {
 router.get('/:id/userid', (req, res) => {
     async.parallel({
         videos: function(cb) {
-            Video.find({question:req.params.id}, {youtubeurl:1, poster:1, commentcount:1, rating:1}).populate('poster', {username:1}).exec(cb);
+            Video.find({question:req.params.id, hidden:false}, {youtubeurl:1, poster:1, commentcount:1, rating:1}).populate('poster', {username:1}).exec(cb);
         },
         question: function(cb) {
             Question.findById(req.params.id, {hidden:0}).exec(cb);
@@ -128,6 +128,7 @@ router.get('/:id/userid', (req, res) => {
         res.status(200).json({videos: results.videos, question:results.question, userrating:results.userrating});
     })
 })
+
 // update
 router.put('/:id', passport.authenticate('jwt', {session:false}), [
     body('question').trim().exists().isString().isLength({min:3, max:500}),
